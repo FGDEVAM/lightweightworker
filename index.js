@@ -1,11 +1,8 @@
 // ============================================
 // TERABOX URL CHECKER - NODE.JS (FOR RENDER)
 // ============================================
-// Save as: index.js
-// ============================================
 
 const express = require('express');
-const fetch = require('node-fetch');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -50,7 +47,7 @@ function convertToDefaultHost(url, defaultHost = DEFAULT_HOST) {
     }
 }
 
-// Fetch short URL info
+// Fetch short URL info - Primary API
 async function fetchShortUrlInfo(shortUrl, cookie, host = DEFAULT_HOST) {
     try {
         const url = `https://${host}/api/shorturlinfo?clienttype=1&root=1&shorturl=${shortUrl}`;
@@ -100,12 +97,13 @@ async function fetchShareListFallback(shortUrl) {
     }
 }
 
-// Check URL
+// Main check URL function
 async function checkUrl(url, cookie, host = DEFAULT_HOST) {
     try {
         const normalizedUrl = convertToDefaultHost(url, host);
         let shortUrl = null;
         
+        // Extract short URL
         const surlMatch = normalizedUrl.match(/surl=([^&]+)/);
         if (surlMatch) {
             shortUrl = surlMatch[1];
@@ -163,7 +161,11 @@ async function checkUrl(url, cookie, host = DEFAULT_HOST) {
     }
 }
 
-// Home route
+// ============================================
+// ROUTES
+// ============================================
+
+// Home route - API check
 app.get('/', async (req, res) => {
     const teraUrl = req.query.url;
     let cookie = req.query.cookie;
@@ -174,8 +176,14 @@ app.get('/', async (req, res) => {
         return res.json({
             name: 'TeraBox URL Checker',
             version: '1.0.0',
+            description: 'Lightweight API to check if TeraBox files exist',
             usage: 'GET /?url=TERABOX_URL&cookie=YOUR_COOKIE',
-            example: '/?url=https://1024terabox.com/s/1xxxxx&cookie=ndus=YOUR_NDUS_VALUE'
+            example: '/?url=https://1024terabox.com/s/1xxxxx&cookie=ndus=YOUR_NDUS_VALUE',
+            response: {
+                exists: 'true/false',
+                total_files: 'number',
+                files: 'array of {name, size, isdir}'
+            }
         });
     }
     
@@ -194,16 +202,26 @@ app.get('/', async (req, res) => {
         return res.status(400).json({ error: 'Invalid TeraBox URL' });
     }
     
+    // Check the URL
     const result = await checkUrl(teraUrl, cookie, host);
     res.json(result);
 });
 
-// Health check
+// Health check route
 app.get('/health', (req, res) => {
-    res.json({ status: 'OK', timestamp: new Date().toISOString() });
+    res.json({ 
+        status: 'OK', 
+        timestamp: new Date().toISOString(),
+        uptime: process.uptime()
+    });
 });
 
-// Start server
+// ============================================
+// START SERVER
+// ============================================
+
 app.listen(PORT, () => {
     console.log(`🚀 TeraBox Checker running on port ${PORT}`);
+    console.log(`📍 Health check: /health`);
+    console.log(`📍 API: /?url=TERABOX_URL&cookie=YOUR_COOKIE`);
 });
